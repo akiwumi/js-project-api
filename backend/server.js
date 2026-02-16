@@ -8,7 +8,7 @@ require('dotenv').config()
 
 const app = express()
 const server = http.createServer(app)
-const allowedOrigins = ['http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:60028', 'http://127.0.0.1:5173']
+const allowedOrigins = ['http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:60028', 'http://127.0.0.1:5173', 'https://your-frontend-url.vercel.app']
 
 const io = socketIO(server, {
   cors: { origin: allowedOrigins, credentials: true }
