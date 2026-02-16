@@ -1,0 +1,27 @@
+:root {
+  /* Colors */
+  --ds-bg: #F4F7FA;
+  --ds-surface: #FFFFFF;
+  --ds-muted: #EDF2F5;
+  --ds-accent: #2EC8A8;
+  --ds-accent-600: #18B794;
+  --ds-text: #24303A;
+  --ds-subtext: #7B8790;
+  --ds-shadow: 0 8px 20px rgba(38,49,63,0.06);
+  --ds-danger: #FF6B6B;
+
+  /* Typography */
+  --ds-font-family: Inter, Roboto, -apple-system, system-ui, 'Segoe UI', 'Helvetica Neue', Arial;
+  --ds-font-xs: 12px;
+  --ds-font-sm: 14px;
+  --ds-font-md: 16px;
+  --ds-font-lg: 18px;
+  --ds-radius: 12px;
+}
+
+/* Utility tokens */
+.ds-container {
+  background: var(--ds-bg);
+  color: var(--ds-text);
+  font-family: var(--ds-font-family);
+}

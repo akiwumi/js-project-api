@@ -1,0 +1,53 @@
+@import '../design-system/styles/design-system.css';
+
+:root {
+  --ds-bg: #F4F7FA;
+  --ds-surface: #FFFFFF;
+  --ds-muted: #EDF2F5;
+  --ds-accent: #2EC8A8;
+  --ds-accent-600: #18B794;
+  --ds-text: #24303A;
+  --ds-subtext: #7B8790;
+  --ds-shadow: 0 8px 20px rgba(38, 49, 63, 0.06);
+  --ds-danger: #FF6B6B;
+  --ds-font-family: Inter, Roboto, -apple-system, system-ui, 'Segoe UI', 'Helvetica Neue', Arial;
+  --ds-radius: 12px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body, html, #root {
+  margin: 0;
+  padding: 0;
+  font-family: var(--ds-font-family);
+  background: var(--ds-bg);
+  color: var(--ds-text);
+  line-height: 1.6;
+}
+
+button {
+  font-family: var(--ds-font-family);
+}
+
+input, textarea {
+  font-family: var(--ds-font-family);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ds-muted);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ds-accent);
+}

@@ -1,0 +1,64 @@
+@import './variables.css';
+
+/* Base resets for the design system */
+* { box-sizing: border-box; }
+body, .ds-root { margin: 0; padding: 0; }
+
+.ds-card {
+  background: var(--ds-surface);
+  border-radius: var(--ds-radius);
+  box-shadow: var(--ds-shadow);
+}
+
+.ds-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: none;
+  font-size: var(--ds-font-sm);
+  cursor: pointer;
+}
+
+.ds-button--primary {
+  background: linear-gradient(180deg, var(--ds-accent), var(--ds-accent-600));
+  color: white;
+  box-shadow: 0 6px 14px rgba(40,160,140,0.12);
+}
+
+.ds-button--ghost {
+  background: transparent;
+  color: var(--ds-text);
+  border: 1px solid rgba(36,48,58,0.06);
+}
+
+.ds-avatar { display: inline-block; border-radius: 9999px; overflow: hidden; }
+.ds-avatar img { display: block; width: 48px; height: 48px; object-fit: cover; }
+
+.ds-sidebar {
+  width: 260px;
+  background: linear-gradient(180deg, var(--ds-surface), #f8fbfc);
+  padding: 18px;
+  border-radius: 14px;
+}
+
+.ds-username { font-weight: 600; font-size: var(--ds-font-lg); color: var(--ds-text); }
+.ds-user-sub { color: var(--ds-subtext); font-size: var(--ds-font-sm); }
+
+.ds-chat-window {
+  background: transparent;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ds-message {
+  max-width: 68%;
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-size: var(--ds-font-sm);
+}
+.ds-message--me { background: #E8F9F2; margin-left: auto; color: var(--ds-text); }
+.ds-message--other { background: var(--ds-surface); color: var(--ds-text); }
