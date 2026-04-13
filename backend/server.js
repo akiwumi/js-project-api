@@ -287,6 +287,68 @@ async function findChatBetweenUsers(userId, otherUserId) {
   }) || null
 }
 
+async function findStarterChatPartner(userId) {
+  const preferredEmails = ['alice@example.com', 'test@example.com', 'bob@example.com']
+
+  if (dbState.mode === 'mongo') {
+    for (const email of preferredEmails) {
+      const user = await User.findOne({
+        _id: { $ne: userId },
+        email,
+      })
+
+      if (user) {
+        return user
+      }
+    }
+
+    return User.findOne({ _id: { $ne: userId } }).sort({ createdAt: 1 })
+  }
+
+  const users = Array.from(inMemoryStore.users.values())
+
+  for (const email of preferredEmails) {
+    const user = users.find((candidate) => (
+      candidate.email === email && normalizeId(candidate._id) !== normalizeId(userId)
+    ))
+
+    if (user) {
+      return user
+    }
+  }
+
+  return users.find((candidate) => normalizeId(candidate._id) !== normalizeId(userId)) || null
+}
+
+async function ensureStarterChatForUser(user) {
+  const partner = await findStarterChatPartner(user._id)
+
+  if (!partner) {
+    return []
+  }
+
+  const existingChat = await findChatBetweenUsers(user._id, partner._id)
+  if (existingChat) {
+    return [await hydrateChat(existingChat)]
+  }
+
+  const starterText = `Hey ${user.name || 'there'}! Welcome to the chat app.`
+  const newChat = await createChatRecord({
+    name: partner.name ? `Chat with ${partner.name}` : 'Welcome Chat',
+    members: [user._id, partner._id],
+  })
+
+  await createMessageRecord({
+    chatId: newChat._id,
+    text: starterText,
+    sender: partner._id,
+    senderName: partner.name || 'Alice',
+  })
+  await updateChatLastMessage(newChat._id, starterText)
+
+  return [await hydrateChat(newChat)]
+}
+
 async function createChatRecord({ name, members }) {
   if (dbState.mode === 'mongo') {
     return Chat.create({ name, members })
@@ -621,7 +683,11 @@ app.get('/api/chats', async (req, res) => {
       return res.status(401).json({ message: 'Not authenticated' })
     }
 
-    const chats = await getChatsForUser(user._id)
+    let chats = await getChatsForUser(user._id)
+
+    if (chats.length === 0) {
+      chats = await ensureStarterChatForUser(user)
+    }
 
     res.json(chats)
   } catch (error) {
