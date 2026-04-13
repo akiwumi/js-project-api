@@ -71,8 +71,8 @@ npm install
 Create a `.env` file in the `frontend/` directory:
 
 ```env
-VITE_API_URL=http://localhost:5000
-VITE_SOCKET_URL=http://localhost:5000
+VITE_API_URL=http://localhost:3001
+VITE_SOCKET_URL=http://localhost:3001
 ```
 
 Adjust the URLs to match your backend server.
@@ -119,6 +119,25 @@ The app will be available at **http://localhost:5173**
 ```bash
 npm run build
 ```
+
+## Deploying the Frontend to Vercel
+
+The simplest setup for this project is:
+
+- Frontend on Vercel
+- Backend on Render
+- Database on MongoDB Atlas
+
+When you create the Vercel project, set the **Root Directory** to `frontend`.
+
+Add these project environment variables in Vercel:
+
+```env
+VITE_API_URL=https://your-render-backend.onrender.com
+VITE_SOCKET_URL=https://your-render-backend.onrender.com
+```
+
+After saving the variables, redeploy the frontend so Vite picks them up at build time.
 
 ### Preview Production Build
 

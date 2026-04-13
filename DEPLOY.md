@@ -1,38 +1,92 @@
-# Render Deployment Instructions
+# Deployment Guide
 
-This project is configured to deploy the **backend** directory to Render.
+This repo is prepared for:
 
-## Option 1: Using render.yaml (Blueprint)
+- **Frontend** on Vercel
+- **Backend** on Render
+- **Database** on MongoDB Atlas
 
-1.  Connect your repository to Render.
-2.  Select **Blueprints** when creating a new service.
-3.  Render will automatically detect `render.yaml` and configure the service as follows:
-    -   **Root Directory**: `backend`
-    -   **Build Command**: `yarn install`
-    -   **Start Command**: `yarn start`
-    -   **Environment Variables**:
-        -   `PORT`: `3001`
-        -   `NODE_ENV`: `production`
-        -   `MONGODB_URI`: (You must provide this value in the Render dashboard)
-        -   `JWT_SECRET`: (You must provide this value in the Render dashboard)
+## 1. Backend on Render
 
-## Option 2: Manual Configuration
+### Option A: Blueprint via `render.yaml`
 
-If you prefer to configure the service manually (Web Service):
+1. Connect the repo to Render.
+2. Create a new **Blueprint** service.
+3. Render will use `render.yaml` with:
+   - Root Directory: `backend`
+   - Build Command: `npm install`
+   - Start Command: `npm start`
+   - Health Check Path: `/health`
 
-1.  **Create a New Web Service** on Render.
-2.  Connect your repository.
-3.  Start with the following settings:
-    -   **Name**: `mern-chat-backend` (or your preferred name)
-    -   **Region**: (Select your closest region)
-    -   **Branch**: `main` (or your default branch)
-    -   **Root Directory**: `backend` (CRITICAL STEP)
-    -   **Runtime**: `Node`
-    -   **Build Command**: `yarn install`
-    -   **Start Command**: `yarn start`
-4.  **Environment Variables**:
-    Add the following variables in the "Environment" tab:
-    -   `PORT`: `3001`
-    -   `MONGODB_URI`: `your-mongodb-uri`
-    -   `JWT_SECRET`: `your-secret`
-    -   `NODE_ENV`: `production`
+Set these environment variables in Render:
+
+```env
+MONGODB_URI=your-mongodb-atlas-connection-string
+JWT_SECRET=your-long-random-secret
+CLIENT_URLS=https://your-frontend.vercel.app
+NODE_ENV=production
+```
+
+If you add a custom frontend domain later, append it:
+
+```env
+CLIENT_URLS=https://your-frontend.vercel.app,https://chat.yourdomain.com
+```
+
+### Option B: Manual Render Web Service
+
+Use these settings:
+
+- Runtime: `Node`
+- Root Directory: `backend`
+- Build Command: `npm install`
+- Start Command: `npm start`
+- Health Check Path: `/health`
+
+Environment variables:
+
+```env
+MONGODB_URI=your-mongodb-atlas-connection-string
+JWT_SECRET=your-long-random-secret
+CLIENT_URLS=https://your-frontend.vercel.app
+NODE_ENV=production
+```
+
+Notes:
+
+- In production the backend **fails fast** if MongoDB is not reachable.
+- Local in-memory fallback is only enabled outside production unless `ALLOW_MEMORY_FALLBACK=true`.
+
+## 2. Frontend on Vercel
+
+1. Import the repo into Vercel.
+2. Set the **Root Directory** to `frontend`.
+3. Keep the detected Vite build settings.
+4. Add these environment variables:
+
+```env
+VITE_API_URL=https://your-render-backend.onrender.com
+VITE_SOCKET_URL=https://your-render-backend.onrender.com
+```
+
+5. Deploy.
+
+## 3. MongoDB Atlas
+
+Use your Atlas connection string for `MONGODB_URI`.
+
+If Atlas network access is locked down, allow the Render service to connect. For a beginner setup, many people start with Atlas IP access open to all addresses and tighten it later.
+
+## 4. What to test after deploy
+
+1. Open the Render backend URL and confirm `/health` returns JSON.
+2. Open the Vercel frontend URL.
+3. Log in with a test user or register a new user.
+4. Send a message and confirm Socket.IO connects.
+
+## 5. Handy files
+
+- Backend env example: `backend/.env.example`
+- Frontend env example: `frontend/.env.example`
+- Render blueprint: `render.yaml`
+- Backend server config: `backend/server.js`
