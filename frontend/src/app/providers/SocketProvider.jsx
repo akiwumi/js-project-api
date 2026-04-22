@@ -20,7 +20,7 @@ export function SocketProvider({ children }) {
       return
     }
 
-    const newSocket = io(SOCKET_URL, {
+    const newSocket = io(SOCKET_URL || undefined, {
       auth: {
         token,
         userId: user._id,

@@ -1,5 +1,17 @@
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
-export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001'
+function trimTrailingSlash(value = '') {
+  return value.replace(/\/+$/, '')
+}
+
+function getBrowserOrigin() {
+  if (typeof window === 'undefined') {
+    return ''
+  }
+
+  return window.location.origin
+}
+
+export const API_BASE_URL = trimTrailingSlash(import.meta.env.VITE_API_URL || '')
+export const SOCKET_URL = trimTrailingSlash(import.meta.env.VITE_SOCKET_URL || getBrowserOrigin())
 
 export const ROUTES = {
   HOME: '/',

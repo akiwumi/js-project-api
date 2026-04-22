@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../app/hooks/useAuth'
 import { useToast } from '../app/hooks/useToast'
 import { useSocket, useSocketEvent } from '../app/hooks/useSocket'
 import { chatService } from '../services/api'
-import { Input, Spinner, Toast } from '../components/common'
+import { Spinner, Toast } from '../components/common'
 
 export default function ChatPage() {
   const { user, logout } = useAuth()
@@ -16,10 +16,10 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [typingUsers, setTypingUsers] = useState({})
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const messagesEndRef = useRef(null)
   const typingTimeoutRef = useRef(null)
 
-  // Auto-scroll to latest message
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
@@ -28,23 +28,50 @@ export default function ChatPage() {
     scrollToBottom()
   }, [messages])
 
-  // Listen for incoming messages
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return undefined
+    }
+
+    const mediaQuery = window.matchMedia('(min-width: 961px)')
+    const handleChange = (event) => {
+      if (event.matches) {
+        setIsSidebarOpen(false)
+      }
+    }
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', handleChange)
+      return () => mediaQuery.removeEventListener('change', handleChange)
+    }
+
+    mediaQuery.addListener(handleChange)
+    return () => mediaQuery.removeListener(handleChange)
+  }, [])
+
   useSocketEvent('message:received', (msg) => {
     if (msg?.chatId && msg.chatId !== activeChatId) return
     setMessages((prev) => {
-      if (prev.some((m) => m._id === msg._id)) return prev
+      if (prev.some((message) => message._id === msg._id)) return prev
       return [...prev, msg]
     })
   })
 
-  // Listen for typing indicator
   useSocketEvent('user:typing', (data) => {
     if (data.chatId === activeChatId) {
       setTypingUsers((prev) => ({
         ...prev,
         [data.userId]: data.userName || 'User',
       }))
-      // Clear typing indicator after 3 seconds
+
       setTimeout(() => {
         setTypingUsers((prev) => {
           const updated = { ...prev }
@@ -55,7 +82,6 @@ export default function ChatPage() {
     }
   })
 
-  // Listen for message seen
   useSocketEvent('message:seen', (data) => {
     setMessages((prev) =>
       prev.map((msg) =>
@@ -69,23 +95,24 @@ export default function ChatPage() {
   }, [])
 
   useEffect(() => {
-    if (activeChatId) {
-      fetchMessages()
-      // Emit that user joined this chat
-      socket?.emit('chat:join', { chatId: activeChatId })
+    if (!activeChatId) {
+      return
     }
+
+    fetchMessages()
+    socket?.emit('chat:join', { chatId: activeChatId })
   }, [activeChatId, socket])
 
   const fetchChats = async () => {
     try {
       setLoading(true)
       const data = await chatService.getChats()
-      setChats(Array.isArray(data) ? data : data.chats || [])
-      // Set first chat as active if not already set
-      if (!activeChatId && (Array.isArray(data) ? data[0] : data.chats?.[0])) {
-        setActiveChatId(
-          (Array.isArray(data) ? data[0] : data.chats?.[0])?._id
-        )
+      const nextChats = Array.isArray(data) ? data : data.chats || []
+
+      setChats(nextChats)
+
+      if (!activeChatId && nextChats[0]?._id) {
+        setActiveChatId(nextChats[0]._id)
       }
     } catch (err) {
       showError('Failed to load chats')
@@ -104,35 +131,40 @@ export default function ChatPage() {
   }
 
   const sendMessage = async () => {
-    if (!messageText.trim() || !activeChatId) return
+    const trimmedMessage = messageText.trim()
+
+    if (!trimmedMessage || !activeChatId) return
 
     setMessageText('')
 
     try {
-      const sentMsg = await chatService.sendMessage(activeChatId, messageText)
+      const sentMsg = await chatService.sendMessage(activeChatId, trimmedMessage)
       setMessages((prev) => {
-        if (prev.some((m) => m._id === sentMsg._id)) return prev
+        if (prev.some((message) => message._id === sentMsg._id)) return prev
         return [...prev, sentMsg]
       })
       success('Message sent')
     } catch (err) {
+      setMessageText(trimmedMessage)
       showError('Failed to send message')
     }
   }
 
   const handleTyping = () => {
+    if (!activeChatId || !user?._id) {
+      return
+    }
+
     socket?.emit('user:typing', {
       chatId: activeChatId,
       userId: user._id,
       userName: user.name,
     })
 
-    // Clear previous timeout
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current)
     }
 
-    // Set new timeout
     typingTimeoutRef.current = setTimeout(() => {
       socket?.emit('user:stopped-typing', {
         chatId: activeChatId,
@@ -151,220 +183,190 @@ export default function ChatPage() {
     }
   }
 
+  const handleSelectChat = (chatId) => {
+    setActiveChatId(chatId)
+    setIsSidebarOpen(false)
+  }
+
+  const handleComposerKeyDown = (event) => {
+    if (event.key !== 'Enter') {
+      return
+    }
+
+    event.preventDefault()
+    sendMessage()
+  }
+
+  const normalizedQuery = searchQuery.trim().toLowerCase()
+  const filteredChats = chats.filter((chat) => {
+    if (!normalizedQuery) {
+      return true
+    }
+
+    return [chat.name, chat.lastMessage]
+      .filter(Boolean)
+      .some((value) => value.toLowerCase().includes(normalizedQuery))
+  })
+
+  const activeChat = chats.find((chat) => chat._id === activeChatId) || null
   const typingList = Object.values(typingUsers).join(', ')
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--ds-bg, #f4f7fa)' }}>
-      {/* Sidebar */}
-      <aside
-        style={{
-          width: 280,
-          background: 'white',
-          borderRight: '1px solid var(--ds-muted, #edf2f5)',
-          padding: 16,
-          overflowY: 'auto',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-          <img src={user?.avatar || 'https://i.pravatar.cc/150?img=12'} alt={user?.name} style={{ width: 48, height: 48, borderRadius: '9999px', objectFit: 'cover' }} />
-          <div>
-            <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--ds-text, #24303a)' }}>
-              {user?.name}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '11px', marginTop: 4 }}>
-              <div
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  background: isConnected ? '#2ec8a8' : '#ccc',
-                }}
-              />
+    <div className="chat-page" data-sidebar-open={isSidebarOpen}>
+      <button
+        type="button"
+        className="chat-sidebar-backdrop"
+        aria-label="Close chats panel"
+        onClick={() => setIsSidebarOpen(false)}
+      />
+
+      <aside id="chat-sidebar" className="chat-sidebar" aria-label="Chat sidebar">
+        <div className="chat-profile">
+          <img
+            src={user?.avatar || 'https://i.pravatar.cc/150?img=12'}
+            alt={user?.name || 'User avatar'}
+            className="chat-avatar"
+          />
+          <div className="chat-profile-meta">
+            <div className="chat-profile-name">{user?.name || 'User'}</div>
+            <div className="chat-profile-status">
+              <span className={`chat-status-dot${isConnected ? ' chat-status-dot--online' : ''}`} />
               {isConnected ? 'Online' : 'Offline'}
             </div>
-            <button
-              onClick={handleLogout}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--ds-accent, #2ec8a8)',
-                cursor: 'pointer',
-                fontSize: '12px',
-                padding: 0,
-                marginTop: 4,
-              }}
-            >
-              Logout
-            </button>
           </div>
+          <button type="button" className="chat-logout" onClick={handleLogout}>
+            Logout
+          </button>
         </div>
 
-        <Input
-          type="text"
-          placeholder="Search chats"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
+        <div className="chat-search-wrap">
+          <label className="chat-search-label" htmlFor="chat-search">
+            Search chats
+          </label>
+          <input
+            id="chat-search"
+            type="text"
+            className="chat-search-input"
+            placeholder="Search chats"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+          />
+        </div>
 
-        <div style={{ marginTop: 20 }}>
-          <h3
-            style={{
-              fontSize: '12px',
-              fontWeight: 600,
-              color: 'var(--ds-subtext, #7b8790)',
-              textTransform: 'uppercase',
-              margin: '0 0 12px 0',
-            }}
-          >
-            Chats
-          </h3>
+        <div className="chat-list-wrap">
+          <div className="chat-list-header">Chats</div>
+
           {loading ? (
-            <Spinner />
-          ) : chats.length === 0 ? (
-            <div style={{ color: 'var(--ds-subtext, #7b8790)', fontSize: '14px' }}>
-              No chats yet
+            <div className="chat-loading">
+              <Spinner />
+            </div>
+          ) : filteredChats.length === 0 ? (
+            <div className="chat-list-empty">
+              {normalizedQuery ? 'No chats match your search' : 'No chats yet'}
             </div>
           ) : (
-            chats.map((chat) => (
-              <div
-                key={chat._id}
-                onClick={() => setActiveChatId(chat._id)}
-                style={{
-                  padding: '10px 12px',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  background: activeChatId === chat._id ? 'var(--ds-muted, #edf2f5)' : 'transparent',
-                  marginBottom: 8,
-                }}
-              >
-                <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--ds-text, #24303a)' }}>
-                  {chat.name || 'Chat'}
-                </div>
-                <div style={{ fontSize: '12px', color: 'var(--ds-subtext, #7b8790)', marginTop: 2 }}>
-                  {chat.lastMessage || 'No messages'}
-                </div>
-              </div>
-            ))
+            <div className="chat-list">
+              {filteredChats.map((chat) => (
+                <button
+                  key={chat._id}
+                  type="button"
+                  className={`chat-list-item${activeChatId === chat._id ? ' chat-list-item--active' : ''}`}
+                  onClick={() => handleSelectChat(chat._id)}
+                >
+                  <span className="chat-list-item-name">{chat.name || 'Chat'}</span>
+                  <span className="chat-list-item-preview">
+                    {chat.lastMessage || 'No messages'}
+                  </span>
+                </button>
+              ))}
+            </div>
           )}
         </div>
       </aside>
 
-      {/* Main Chat */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <main className="chat-main">
+        <header className="chat-header">
+          <div className="chat-header-main">
+            <button
+              type="button"
+              className="chat-sidebar-toggle"
+              aria-controls="chat-sidebar"
+              aria-expanded={isSidebarOpen}
+              onClick={() => setIsSidebarOpen((prev) => !prev)}
+            >
+              Chats
+            </button>
+            <div className="chat-header-copy">
+              <h2 className="chat-header-title">{activeChat?.name || 'Messages'}</h2>
+              <p className="chat-header-subtitle">
+                {activeChat?.lastMessage || 'Pick a conversation and start chatting'}
+              </p>
+            </div>
+          </div>
+          <div className="chat-connection-pill">
+            <span className={`chat-status-dot${isConnected ? ' chat-status-dot--online' : ''}`} />
+            {isConnected ? 'Connected' : 'Offline'}
+          </div>
+        </header>
+
         {activeChatId ? (
           <>
-            {/* Chat Header */}
-            <div
-              style={{
-                padding: 16,
-                borderBottom: '1px solid var(--ds-muted, #edf2f5)',
-                background: 'white',
-              }}
-            >
-              <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: 'var(--ds-text, #24303a)' }}>
-                Chat
-              </h2>
-            </div>
-
-            {/* Messages */}
-            <div
-              style={{
-                flex: 1,
-                overflowY: 'auto',
-                padding: 16,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 12,
-              }}
-            >
+            <div className="chat-messages">
               {messages.length === 0 ? (
-                <div style={{ textAlign: 'center', color: 'var(--ds-subtext, #7b8790)' }}>
-                  No messages yet. Start the conversation!
+                <div className="chat-empty-state">
+                  No messages yet. Start the conversation.
                 </div>
               ) : (
-                messages.map((msg, i) => (
-                  <div key={i}>
+                messages.map((msg, index) => {
+                  const isMine = msg.sender === user?._id
+
+                  return (
                     <div
-                      style={{
-                        maxWidth: '60%',
-                        alignSelf: msg.sender === user?._id ? 'flex-end' : 'flex-start',
-                        padding: '10px 14px',
-                        borderRadius: '12px',
-                        background: msg.sender === user?._id ? '#e8f9f2' : 'white',
-                        color: 'var(--ds-text, #24303a)',
-                        fontSize: '14px',
-                        wordBreak: 'break-word',
-                        marginLeft: msg.sender === user?._id ? 'auto' : 0,
-                      }}
+                      key={msg._id || `${msg.sender}-${index}`}
+                      className={`chat-message-row${isMine ? ' chat-message-row--mine' : ''}`}
                     >
-                      <div style={{ fontSize: '12px', color: 'var(--ds-subtext, #7b8790)', marginBottom: 4 }}>
-                        {msg.senderName || 'User'}
-                      </div>
-                      {msg.text}
-                      {msg.sender === user?._id && (
-                        <div style={{ fontSize: '10px', color: 'var(--ds-subtext, #7b8790)', marginTop: 4 }}>
-                          {msg.seen ? '✓✓' : '✓'}
+                      <div className={`chat-message${isMine ? ' chat-message--mine' : ''}`}>
+                        <div className="chat-message-author">
+                          {msg.senderName || (isMine ? 'You' : 'User')}
                         </div>
-                      )}
+                        <div className="chat-message-text">{msg.text}</div>
+                        {isMine && (
+                          <div className="chat-message-status">
+                            {msg.seen ? 'Seen' : 'Sent'}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  )
+                })
               )}
+
               {typingList && (
-                <div
-                  style={{
-                    fontSize: '12px',
-                    color: 'var(--ds-accent, #2ec8a8)',
-                    fontStyle: 'italic',
-                    marginTop: 4,
-                  }}
-                >
-                  {typingList} is typing...
-                </div>
+                <div className="chat-typing-indicator">{typingList} is typing...</div>
               )}
+
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Composer */}
-            <div
-              style={{
-                padding: 16,
-                borderTop: '1px solid var(--ds-muted, #edf2f5)',
-                background: 'white',
-                display: 'flex',
-                gap: 8,
-              }}
-            >
+            <div className="chat-composer">
               <input
                 type="text"
+                className="chat-composer-input"
                 placeholder="Write your message..."
                 value={messageText}
-                onChange={(e) => {
-                  setMessageText(e.target.value)
+                onChange={(event) => {
+                  setMessageText(event.target.value)
                   handleTyping()
                 }}
-                onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                style={{
-                  flex: 1,
-                  padding: '10px 12px',
-                  borderRadius: '10px',
-                  border: '1px solid var(--ds-muted, #edf2f5)',
-                  fontSize: '14px',
-                }}
+                onKeyDown={handleComposerKeyDown}
               />
-              <button onClick={sendMessage} style={{ padding: '10px 14px', borderRadius: '10px', border: 'none', background: 'linear-gradient(180deg, var(--ds-accent), var(--ds-accent-600))', color: 'white', cursor: 'pointer', fontSize: '14px', fontWeight: 600 }}>Send</button>
+              <button type="button" className="chat-send" onClick={sendMessage}>
+                Send
+              </button>
             </div>
           </>
         ) : (
-          <div
-            style={{
-              flex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--ds-subtext, #7b8790)',
-            }}
-          >
+          <div className="chat-empty-panel">
             Select a chat to start messaging
           </div>
         )}

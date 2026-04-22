@@ -26,15 +26,16 @@ export function Toast({ message, type = 'info' }) {
   return (
     <div style={{
       position: 'fixed',
-      bottom: 20,
-      right: 20,
+      bottom: 12,
+      right: 12,
       background: bgColor,
       color: 'white',
       padding: '12px 16px',
-      borderRadius: 'var(--ds-radius, 12px)',
+      borderRadius: 'var(--ds-radius, 8px)',
       boxShadow: 'var(--ds-shadow, 0 8px 20px rgba(38,49,63,0.06))',
       zIndex: 9999,
       animation: 'slideIn 0.3s ease-in-out',
+      maxWidth: 'min(360px, calc(100vw - 24px))',
     }}>
       <style>{`@keyframes slideIn { from { transform: translateX(400px); opacity: 0 } to { transform: translateX(0); opacity: 1 } }`}</style>
       {message}
@@ -57,7 +58,7 @@ export function Modal({ isOpen, title, onClose, children }) {
       <div
         style={{
           background: 'var(--ds-surface, white)',
-          borderRadius: 'var(--ds-radius, 12px)',
+          borderRadius: 'var(--ds-radius, 8px)',
           padding: 24,
           maxWidth: 500,
           width: '90%',
@@ -94,7 +95,7 @@ export function Input({ label, error, ...props }) {
         style={{
           width: '100%',
           padding: '10px 12px',
-          borderRadius: 'var(--ds-radius, 12px)',
+          borderRadius: 'var(--ds-radius, 8px)',
           border: `1px solid ${error ? 'var(--ds-danger, #ff6b6b)' : 'var(--ds-muted, #edf2f5)'}`,
           fontSize: '14px',
           fontFamily: 'var(--ds-font-family, inherit)',

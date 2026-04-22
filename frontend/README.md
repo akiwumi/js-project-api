@@ -68,7 +68,9 @@ npm install
 
 ### 2. Environment Variables
 
-Create a `.env` file in the `frontend/` directory:
+For local development you can now skip `.env` entirely and let Vite proxy `/api` and `/socket.io` to `http://localhost:3001`.
+
+If you prefer explicit values, or if your backend runs somewhere else, create a `.env` file in `frontend/`:
 
 ```env
 VITE_API_URL=http://localhost:3001
@@ -138,6 +140,8 @@ VITE_SOCKET_URL=https://your-render-backend.onrender.com
 ```
 
 After saving the variables, redeploy the frontend so Vite picks them up at build time.
+
+If you leave those variables unset, the frontend falls back to same-origin `/api` and `socket.io`, which is useful for proxied local development but not for a split Vercel + Render deployment.
 
 ### Preview Production Build
 

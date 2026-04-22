@@ -71,6 +71,11 @@ VITE_SOCKET_URL=https://your-render-backend.onrender.com
 
 5. Deploy.
 
+Notes:
+
+- If the frontend and backend live on different origins, keep both `VITE_API_URL` and `VITE_SOCKET_URL` set in Vercel.
+- If those vars are left unset, the frontend falls back to same-origin `/api` and `socket.io`, which is useful for proxied local development but not for a split Vercel + Render setup.
+
 ## 3. MongoDB Atlas
 
 Use your Atlas connection string for `MONGODB_URI`.
