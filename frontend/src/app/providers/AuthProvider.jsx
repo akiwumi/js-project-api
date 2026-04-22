@@ -34,7 +34,7 @@ function authReducer(state, action) {
         loading: false,
       }
     case 'LOGOUT':
-      return initialState
+      return { ...initialState, loading: false }
     case 'SET_ERROR':
       return { ...state, error: action.payload, loading: false }
     case 'CLEAR_ERROR':
