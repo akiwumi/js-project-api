@@ -3,7 +3,6 @@ import { API_BASE_URL } from './constants'
 
 const api = axios.create({
   baseURL: API_BASE_URL || undefined,
-  withCredentials: true,
 })
 
 // Request interceptor: add token if available
